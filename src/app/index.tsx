@@ -1,98 +1,242 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Link } from "expo-router";
+import { useEffect, useRef } from "react";
+import {
+  Animated,
+  Easing,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+const palette = {
+  emerald: "#0e9d77",
+  emeraldDark: "#0a7d61",
+  emeraldSoft: "#dff8ee",
+  mint: "#cfeee2",
+  card: "#f8fffd",
+  text: "#123129",
+  muted: "#5d7d73",
+  white: "#ffffff",
+  shadow: "rgba(14, 157, 119, 0.18)",
+};
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
+function BrandMark() {
   return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
+    <View style={styles.brandIconWrap}>
+      <View style={styles.brandPill}>
+        <View style={styles.brandBody} />
+        <View style={styles.brandPlusHorizontal} />
+        <View style={styles.brandPlusVertical} />
+      </View>
+    </View>
   );
 }
 
-export default function HomeScreen() {
+export default function WelcomeScreen() {
+  const floatAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(floatAnim, {
+          toValue: -10,
+          duration: 1700,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(floatAnim, {
+          toValue: 0,
+          duration: 1700,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]),
+    ).start();
+  }, [floatAnim]);
+
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.backgroundGlowOne} />
+      <View style={styles.backgroundGlowTwo} />
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
+      <Animated.View
+        style={[styles.heroCard, { transform: [{ translateY: floatAnim }] }]}
+      >
+        <BrandMark />
+        <Text style={styles.brandText}>PharmaCare</Text>
+        <Text style={styles.subtitle}>
+          Pharmacy Management App UI (Core Sketch)
+        </Text>
+      </Animated.View>
 
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
+      <View style={styles.actionsWrap}>
+        <Link href="/login" asChild>
+          <Pressable style={styles.primaryButton}>
+            <Text style={styles.primaryButtonText}>Login</Text>
+          </Pressable>
+        </Link>
 
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+        <Link href="/signup" asChild>
+          <Pressable style={styles.secondaryButton}>
+            <Text style={styles.secondaryButtonText}>Create account</Text>
+          </Pressable>
+        </Link>
+      </View>
+
+      <View style={styles.footerRow}>
+        <Text style={styles.footerText}>Secure medicine inventory</Text>
+        <Text style={styles.footerDot}>•</Text>
+        <Text style={styles.footerText}>Fast checkout</Text>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
   safeArea: {
     flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
+    backgroundColor: "#edfef7",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    overflow: "hidden",
   },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
+  backgroundGlowOne: {
+    position: "absolute",
+    width: 320,
+    height: 320,
+    borderRadius: 160,
+    backgroundColor: "rgba(11, 159, 122, 0.12)",
+    top: -90,
+    left: -80,
   },
-  title: {
-    textAlign: 'center',
+  backgroundGlowTwo: {
+    position: "absolute",
+    width: 360,
+    height: 360,
+    borderRadius: 180,
+    backgroundColor: "rgba(0, 195, 144, 0.08)",
+    right: -120,
+    bottom: -80,
   },
-  code: {
-    textTransform: 'uppercase',
+  heroCard: {
+    alignItems: "center",
+    marginTop: 28,
+    marginBottom: 30,
   },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+  brandIconWrap: {
+    width: 132,
+    height: 132,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 18,
+  },
+  brandPill: {
+    width: 118,
+    height: 94,
+    borderRadius: 48,
+    backgroundColor: "#f6fffb",
+    borderWidth: 10,
+    borderColor: palette.emerald,
+    transform: [{ rotate: "-28deg" }],
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: palette.shadow,
+    shadowOffset: { width: 0, height: 18 },
+    shadowOpacity: 0.25,
+    shadowRadius: 22,
+    elevation: 10,
+  },
+  brandBody: {
+    width: 62,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: palette.emerald,
+    position: "absolute",
+    left: 26,
+    top: 26,
+  },
+  brandPlusHorizontal: {
+    position: "absolute",
+    width: 24,
+    height: 8,
+    backgroundColor: "#ffffff",
+    borderRadius: 6,
+  },
+  brandPlusVertical: {
+    position: "absolute",
+    width: 8,
+    height: 24,
+    backgroundColor: "#ffffff",
+    borderRadius: 6,
+  },
+  brandText: {
+    fontSize: 48,
+    lineHeight: 56,
+    fontWeight: "800",
+    color: palette.emeraldDark,
+    letterSpacing: -1.4,
+  },
+  subtitle: {
+    marginTop: 12,
+    textAlign: "center",
+    fontSize: 18,
+    lineHeight: 28,
+    fontWeight: "600",
+    color: palette.muted,
+    maxWidth: 330,
+  },
+  actionsWrap: {
+    width: "100%",
+    maxWidth: 360,
+    gap: 14,
+  },
+  primaryButton: {
+    backgroundColor: palette.emerald,
+    borderRadius: 18,
+    paddingVertical: 18,
+    alignItems: "center",
+    shadowColor: palette.emerald,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.2,
+    shadowRadius: 18,
+    elevation: 8,
+  },
+  primaryButtonText: {
+    color: palette.white,
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  secondaryButton: {
+    backgroundColor: "rgba(14, 157, 119, 0.08)",
+    borderRadius: 18,
+    paddingVertical: 18,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(14, 157, 119, 0.18)",
+  },
+  secondaryButtonText: {
+    color: palette.emeraldDark,
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  footerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 26,
+    gap: 8,
+  },
+  footerText: {
+    color: palette.muted,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  footerDot: {
+    color: palette.emerald,
+    fontSize: 20,
+    marginTop: -2,
   },
 });
