@@ -10,6 +10,29 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npm install
    ```
 
+## Authentication setup
+
+The login and signup screens use the Express API in the sibling `server` directory. MongoDB Atlas credentials and the JWT secret stay on the server.
+
+1. Create a MongoDB Atlas cluster, database user, and network access rule for the machine running the API.
+2. Copy `server/.env.example` to `server/.env` and fill in `MONGODB_URI` and a long random `JWT_SECRET`.
+3. Start the API from the repository root:
+
+   ```bash
+   cd server
+   npm install
+   npm run dev
+   ```
+
+4. For a physical phone, copy `.env.example` to `.env` in `pharmacy-app` and set `EXPO_PUBLIC_API_URL` to `http://<your-computer-lan-ip>:4000/api`. Keep `localhost` for the web app or iOS simulator; use `10.0.2.2` for an Android emulator.
+5. Start Expo from `pharmacy-app`:
+
+   ```bash
+   npm start
+   ```
+
+The API creates a unique email index, hashes passwords with bcrypt, and returns a signed JWT after signup or login. Never commit either `.env` file.
+
 2. Start the app
 
    ```bash

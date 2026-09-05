@@ -1,5 +1,5 @@
-import { Link } from "expo-router";
-import { useEffect, useRef } from "react";
+import { Link, router } from "expo-router";
+import { useEffect, useRef, useState } from "react";
 import {
     Animated,
     Easing,
@@ -12,6 +12,8 @@ import {
     TextInput,
     View,
 } from "react-native";
+
+import { authenticate } from "@/lib/auth";
 
 const palette = {
   emerald: "#10a06d",
@@ -27,6 +29,13 @@ const palette = {
 
 export default function SignupScreen() {
   const rise = useRef(new Animated.Value(26)).current;
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     Animated.timing(rise, {
@@ -71,6 +80,8 @@ export default function SignupScreen() {
               style={styles.input}
               placeholder="Enter your full name"
               placeholderTextColor={palette.muted}
+              value={name}
+              onChangeText={setName}
             />
           </View>
 
@@ -82,6 +93,8 @@ export default function SignupScreen() {
               placeholderTextColor={palette.muted}
               autoCapitalize="none"
               autoCorrect={false}
+              value={email}
+              onChangeText={setEmail}
             />
           </View>
 
@@ -92,6 +105,8 @@ export default function SignupScreen() {
               placeholder="Create a password"
               placeholderTextColor={palette.muted}
               secureTextEntry
+              value={password}
+              onChangeText={setPassword}
             />
           </View>
 
@@ -102,18 +117,45 @@ export default function SignupScreen() {
               placeholder="Re-enter your password"
               placeholderTextColor={palette.muted}
               secureTextEntry
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
             />
           </View>
 
-          <View style={styles.checkRow}>
-            <View style={styles.checkbox} />
+          <Pressable style={styles.checkRow} onPress={() => setAcceptedTerms((current) => !current)}>
+            <View style={[styles.checkbox, acceptedTerms && styles.checkboxSelected]} />
             <Text style={styles.checkText}>
               I agree to the terms and conditions
             </Text>
-          </View>
+          </Pressable>
 
-          <Pressable style={styles.primaryButton}>
-            <Text style={styles.primaryButtonText}>Sign up</Text>
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+          <Pressable
+            style={[styles.primaryButton, isSubmitting && styles.disabledButton]}
+            disabled={isSubmitting}
+            onPress={async () => {
+              setError("");
+              if (password !== confirmPassword) {
+                setError("Passwords do not match.");
+                return;
+              }
+              if (!acceptedTerms) {
+                setError("Please accept the terms and conditions.");
+                return;
+              }
+              setIsSubmitting(true);
+              try {
+                await authenticate("signup", { name, email, password });
+                router.replace("/explore");
+              } catch (submitError) {
+                setError(submitError instanceof Error ? submitError.message : "Unable to create your account.");
+              } finally {
+                setIsSubmitting(false);
+              }
+            }}
+          >
+            <Text style={styles.primaryButtonText}>{isSubmitting ? "Creating account..." : "Sign up"}</Text>
           </Pressable>
 
           <View style={styles.footerRow}>
@@ -255,6 +297,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: palette.emerald,
   },
+  checkboxSelected: {
+    backgroundColor: palette.emerald,
+  },
   checkText: {
     color: palette.muted,
     fontSize: 13,
@@ -276,6 +321,15 @@ const styles = StyleSheet.create({
     color: palette.white,
     fontSize: 17,
     fontWeight: "800",
+  },
+  disabledButton: {
+    opacity: 0.65,
+  },
+  errorText: {
+    color: "#c0392b",
+    fontSize: 13,
+    marginBottom: 12,
+    textAlign: "center",
   },
   footerRow: {
     flexDirection: "row",
