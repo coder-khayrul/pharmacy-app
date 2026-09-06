@@ -147,7 +147,7 @@ export default function SignupScreen() {
               setIsSubmitting(true);
               try {
                 await authenticate("signup", { name, email, password });
-                router.replace("/explore");
+                router.replace("/dashboard" as never);
               } catch (submitError) {
                 setError(submitError instanceof Error ? submitError.message : "Unable to create your account.");
               } finally {

@@ -115,7 +115,7 @@ export default function LoginScreen() {
               setIsSubmitting(true);
               try {
                 await authenticate("login", { email, password });
-                router.replace("/explore");
+                router.replace("/dashboard" as never);
               } catch (submitError) {
                 setError(submitError instanceof Error ? submitError.message : "Unable to log in.");
               } finally {
