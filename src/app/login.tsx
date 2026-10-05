@@ -13,6 +13,7 @@ import {
     View,
 } from "react-native";
 
+import { FormToast, PasswordField } from "@/components/auth-ui";
 import { authenticate } from "@/lib/auth";
 
 const palette = {
@@ -32,7 +33,7 @@ export default function LoginScreen() {
   const rise = useRef(new Animated.Value(28)).current;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [toast, setToast] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -49,6 +50,7 @@ export default function LoginScreen() {
       style={styles.screen}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
+      <FormToast message={toast} kind="error" onDismiss={() => setToast("")} />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -80,22 +82,14 @@ export default function LoginScreen() {
               placeholderTextColor={palette.muted}
               autoCapitalize="none"
               autoCorrect={false}
+              keyboardType="email-address"
+              autoComplete="email"
               value={email}
               onChangeText={setEmail}
             />
           </View>
 
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Password</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              placeholderTextColor={palette.muted}
-              secureTextEntry
-              value={password}
-              onChangeText={setPassword}
-            />
-          </View>
+          <PasswordField label="Password" placeholder="Enter your password" value={password} onChangeText={setPassword} autoComplete="current-password" />
 
           <View style={styles.rowBetween}>
             <View style={styles.checkWrap}>
@@ -105,19 +99,29 @@ export default function LoginScreen() {
             <Text style={styles.linkText}>Forgot password?</Text>
           </View>
 
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
           <Pressable
             style={[styles.primaryButton, isSubmitting && styles.disabledButton]}
             disabled={isSubmitting}
             onPress={async () => {
-              setError("");
+              setToast("");
+              if (!email.trim()) {
+                setToast("Enter your email address.");
+                return;
+              }
+              if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
+                setToast("Enter a valid email address.");
+                return;
+              }
+              if (!password) {
+                setToast("Enter your password.");
+                return;
+              }
               setIsSubmitting(true);
               try {
-                await authenticate("login", { email, password });
+                await authenticate("login", { email: email.trim().toLowerCase(), password });
                 router.replace("/dashboard" as never);
               } catch (submitError) {
-                setError(submitError instanceof Error ? submitError.message : "Unable to log in.");
+                setToast(submitError instanceof Error ? submitError.message : "Unable to log in.");
               } finally {
                 setIsSubmitting(false);
               }

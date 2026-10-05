@@ -13,7 +13,8 @@ import {
     View,
 } from "react-native";
 
-import { authenticate } from "@/lib/auth";
+  import { FormToast, PasswordField, PasswordRequirements } from "@/components/auth-ui";
+  import { requestSignupVerification, verifySignupCode } from "@/lib/auth";
 
 const palette = {
   emerald: "#10a06d",
@@ -34,8 +35,11 @@ export default function SignupScreen() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const [error, setError] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
+  const [step, setStep] = useState<"details" | "verification">("details");
+  const [toast, setToast] = useState<{ message: string; kind: "error" | "success" | "info" }>({ message: "", kind: "info" });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const codeInput = useRef<TextInput>(null);
 
   useEffect(() => {
     Animated.timing(rise, {
@@ -46,11 +50,73 @@ export default function SignupScreen() {
     }).start();
   }, [rise]);
 
+  const showToast = (message: string, kind: "error" | "success" | "info" = "error") => {
+    setToast({ message, kind });
+  };
+
+  const validateDetails = () => {
+    if (!name.trim()) return "Enter your full name to continue.";
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) return "Enter a valid email address.";
+    if (password.length < 6) return "Your password needs at least 6 characters.";
+    if (!/[A-Z]/.test(password)) return "Add at least one uppercase letter to your password.";
+    if (!/[a-z]/.test(password)) return "Add at least one lowercase letter to your password.";
+    if (!/\d/.test(password)) return "Add at least one number to your password.";
+    if (!/[^A-Za-z0-9]/.test(password)) return "Add at least one special character to your password.";
+    if (password !== confirmPassword) return "Your passwords do not match.";
+    if (!acceptedTerms) return "Please accept the Privacy Policy to continue.";
+    return "";
+  };
+
+  const requestCode = async () => {
+    const validationMessage = validateDetails();
+    if (validationMessage) {
+      showToast(validationMessage);
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await requestSignupVerification({
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        password,
+        acceptedPolicy: "true",
+      });
+      setStep("verification");
+      showToast("A 6-digit verification code was sent to your email.", "success");
+    } catch (submitError) {
+      showToast(submitError instanceof Error ? submitError.message : "Unable to send a verification code.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const completeSignup = async () => {
+    if (!/^\d{6}$/.test(verificationCode)) {
+      showToast("Enter the complete 6-digit code from your email.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await verifySignupCode(email.trim().toLowerCase(), verificationCode);
+      setToast({ message: "Email verified. Your account is ready; please log in.", kind: "success" });
+      setPassword("");
+      setConfirmPassword("");
+      setTimeout(() => router.replace("/login"), 1800);
+    } catch (submitError) {
+      showToast(submitError instanceof Error ? submitError.message : "Unable to verify your email.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       style={styles.screen}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
+      <FormToast message={toast.message} kind={toast.kind} onDismiss={() => setToast((current) => ({ ...current, message: "" }))} />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -69,103 +135,84 @@ export default function SignupScreen() {
             <Text style={styles.brand}>PharmaCare</Text>
           </View>
 
-          <Text style={styles.header}>Create account</Text>
+          <Text style={styles.header}>{step === "details" ? "Create account" : "Verify your email"}</Text>
           <Text style={styles.subheader}>
-            Set up your pharmacy management access
+            {step === "details" ? "Set up your pharmacy management access" : `We sent a 6-digit code to ${email.trim()}`}
           </Text>
 
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Full name</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your full name"
-              placeholderTextColor={palette.muted}
-              value={name}
-              onChangeText={setName}
-            />
+          <View style={styles.progressSection}>
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, step === "verification" && styles.progressComplete]} />
+            </View>
+            <Text style={styles.progressLabel}>{step === "details" ? "STEP 1 OF 2  ·  YOUR DETAILS" : "STEP 2 OF 2  ·  EMAIL VERIFICATION"}</Text>
           </View>
 
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Email address</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="you@example.com"
-              placeholderTextColor={palette.muted}
-              autoCapitalize="none"
-              autoCorrect={false}
-              value={email}
-              onChangeText={setEmail}
-            />
-          </View>
+          {step === "details" ? (
+            <>
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Full name</Text>
+                <TextInput style={styles.input} placeholder="Enter your full name" placeholderTextColor={palette.muted} value={name} onChangeText={setName} autoComplete="name" />
+              </View>
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Email address</Text>
+                <TextInput style={styles.input} placeholder="you@example.com" placeholderTextColor={palette.muted} autoCapitalize="none" autoCorrect={false} keyboardType="email-address" autoComplete="email" value={email} onChangeText={setEmail} />
+              </View>
+              <PasswordField label="Password" placeholder="Create a password" value={password} onChangeText={setPassword} autoComplete="new-password" />
+              <PasswordRequirements password={password} />
+              <PasswordField label="Confirm password" placeholder="Re-enter your password" value={confirmPassword} onChangeText={setConfirmPassword} autoComplete="new-password" />
 
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Password</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Create a password"
-              placeholderTextColor={palette.muted}
-              secureTextEntry
-              value={password}
-              onChangeText={setPassword}
-            />
-          </View>
+              <View style={styles.checkRow}>
+                <Pressable
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: acceptedTerms }}
+                  onPress={() => setAcceptedTerms((current) => !current)}
+                  style={[styles.checkbox, acceptedTerms && styles.checkboxSelected]}
+                >
+                  {acceptedTerms && <Text style={styles.checkboxCheck}>✓</Text>}
+                </Pressable>
+                <Text style={styles.checkText}>
+                  I agree to the <Text style={styles.policyLink} onPress={() => router.push("/privacy")}>Privacy Policy</Text>
+                </Text>
+              </View>
 
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Confirm password</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Re-enter your password"
-              placeholderTextColor={palette.muted}
-              secureTextEntry
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-            />
-          </View>
-
-          <Pressable style={styles.checkRow} onPress={() => setAcceptedTerms((current) => !current)}>
-            <View style={[styles.checkbox, acceptedTerms && styles.checkboxSelected]} />
-            <Text style={styles.checkText}>
-              I agree to the terms and conditions
-            </Text>
-          </Pressable>
-
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-          <Pressable
-            style={[styles.primaryButton, isSubmitting && styles.disabledButton]}
-            disabled={isSubmitting}
-            onPress={async () => {
-              setError("");
-              if (password !== confirmPassword) {
-                setError("Passwords do not match.");
-                return;
-              }
-              if (!acceptedTerms) {
-                setError("Please accept the terms and conditions.");
-                return;
-              }
-              setIsSubmitting(true);
-              try {
-                await authenticate("signup", { name, email, password });
-                router.replace("/dashboard" as never);
-              } catch (submitError) {
-                setError(submitError instanceof Error ? submitError.message : "Unable to create your account.");
-              } finally {
-                setIsSubmitting(false);
-              }
-            }}
-          >
-            <Text style={styles.primaryButtonText}>{isSubmitting ? "Creating account..." : "Sign up"}</Text>
-          </Pressable>
-
-          <View style={styles.footerRow}>
-            <Text style={styles.footerText}>Already have an account?</Text>
-            <Link href="/login" asChild>
-              <Pressable>
-                <Text style={styles.footerLink}>Login</Text>
+              <Pressable style={[styles.primaryButton, isSubmitting && styles.disabledButton]} disabled={isSubmitting} onPress={requestCode}>
+                <Text style={styles.primaryButtonText}>{isSubmitting ? "Sending code..." : "Next: verify email"}</Text>
               </Pressable>
-            </Link>
-          </View>
+            </>
+          ) : (
+            <>
+              <Pressable style={styles.codeBoxes} onPress={() => codeInput.current?.focus()}>
+                {Array.from({ length: 6 }, (_, index) => (
+                  <View key={index} style={[styles.codeBox, verificationCode.length === index && styles.codeBoxActive]}>
+                    <Text style={styles.codeDigit}>{verificationCode[index] || ""}</Text>
+                  </View>
+                ))}
+                <TextInput
+                  ref={codeInput}
+                  value={verificationCode}
+                  onChangeText={(value) => setVerificationCode(value.replace(/\D/g, "").slice(0, 6))}
+                  keyboardType="number-pad"
+                  autoComplete="one-time-code"
+                  textContentType="oneTimeCode"
+                  accessibilityLabel="Six-digit email verification code"
+                  style={styles.hiddenCodeInput}
+                  maxLength={6}
+                />
+              </Pressable>
+              <Text style={styles.codeHelp}>Enter the code exactly as it appears in your inbox.</Text>
+              <Pressable style={[styles.primaryButton, isSubmitting && styles.disabledButton]} disabled={isSubmitting} onPress={completeSignup}>
+                <Text style={styles.primaryButtonText}>{isSubmitting ? "Verifying..." : "Verify and create account"}</Text>
+              </Pressable>
+              <Pressable style={styles.backAction} onPress={() => setStep("details")}>
+                <Text style={styles.backActionText}>Back to details</Text>
+              </Pressable>
+            </>
+          )}
+
+          {step === "details" && <View style={styles.footerRow}>
+            <Text style={styles.footerText}>Already have an account?</Text>
+            <Link href="/login" asChild><Pressable><Text style={styles.footerLink}>Login</Text></Pressable></Link>
+          </View>}
         </Animated.View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -263,6 +310,31 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 22,
   },
+  progressSection: {
+    marginBottom: 20,
+  },
+  progressTrack: {
+    height: 6,
+    borderRadius: 4,
+    backgroundColor: "#e7f1ec",
+    overflow: "hidden",
+  },
+  progressFill: {
+    width: "50%",
+    height: "100%",
+    backgroundColor: palette.emerald,
+    borderRadius: 4,
+  },
+  progressComplete: {
+    width: "100%",
+  },
+  progressLabel: {
+    color: palette.muted,
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+    marginTop: 8,
+  },
   formGroup: {
     marginBottom: 14,
   },
@@ -300,11 +372,74 @@ const styles = StyleSheet.create({
   checkboxSelected: {
     backgroundColor: palette.emerald,
   },
+  checkboxCheck: {
+    color: palette.white,
+    fontSize: 13,
+    lineHeight: 17,
+    fontWeight: "900",
+  },
   checkText: {
     color: palette.muted,
     fontSize: 13,
     fontWeight: "600",
     flex: 1,
+  },
+  policyLink: {
+    color: palette.emeraldDark,
+    fontWeight: "800",
+    textDecorationLine: "underline",
+  },
+  codeBoxes: {
+    position: "relative",
+    width: "100%",
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 7,
+    marginTop: 8,
+  },
+  codeBox: {
+    flex: 1,
+    maxWidth: 52,
+    height: 54,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: palette.border,
+    backgroundColor: "#f7faf8",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  codeBoxActive: {
+    borderColor: palette.emerald,
+    borderWidth: 2,
+    backgroundColor: palette.emeraldSoft,
+  },
+  codeDigit: {
+    color: palette.text,
+    fontSize: 21,
+    fontWeight: "800",
+  },
+  hiddenCodeInput: {
+    position: "absolute",
+    width: 1,
+    height: 1,
+    opacity: 0.01,
+  },
+  codeHelp: {
+    color: palette.muted,
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: "center",
+    marginTop: 16,
+    marginBottom: 24,
+  },
+  backAction: {
+    alignItems: "center",
+    paddingVertical: 14,
+  },
+  backActionText: {
+    color: palette.emeraldDark,
+    fontWeight: "700",
+    fontSize: 13,
   },
   primaryButton: {
     backgroundColor: palette.emerald,

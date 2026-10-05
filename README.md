@@ -15,7 +15,7 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
 The login and signup screens use the Express API in the sibling `server` directory. MongoDB Atlas credentials and the JWT secret stay on the server.
 
 1. Create a MongoDB Atlas cluster, database user, and network access rule for the machine running the API.
-2. Copy `server/.env.example` to `server/.env` and fill in `MONGODB_URI` and a long random `JWT_SECRET`.
+2. Copy `server/.env.example` to `server/.env` and fill in `MONGODB_URI`, a long random `JWT_SECRET`, and your SMTP host, username, password, and sender address. Signup email verification cannot send codes until SMTP is configured.
 3. Start the API from the repository root:
 
    ```bash
@@ -31,7 +31,7 @@ The login and signup screens use the Express API in the sibling `server` directo
    npm start
    ```
 
-The API creates a unique email index, hashes passwords with bcrypt, and returns a signed JWT after signup or login. Never commit either `.env` file.
+The API creates a unique email index, hashes passwords with bcrypt, and returns a signed JWT after login. Signup codes expire after 10 minutes; the account is created only after the code is verified, and verification does not log the new user in. Never commit either `.env` file.
 
 2. Start the app
 
