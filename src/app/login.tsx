@@ -14,7 +14,7 @@ import {
 } from "react-native";
 
 import { FormToast, PasswordField } from "@/components/auth-ui";
-import { authenticate } from "@/lib/auth";
+import { authenticate, requestPasswordReset } from "@/lib/auth";
 
 const palette = {
   emerald: "#10a06d",
@@ -96,7 +96,28 @@ export default function LoginScreen() {
               <View style={styles.checkbox} />
               <Text style={styles.checkText}>Remember me</Text>
             </View>
-            <Text style={styles.linkText}>Forgot password?</Text>
+            <Pressable
+              accessibilityRole="button"
+              disabled={isSubmitting}
+              onPress={async () => {
+                setToast("");
+                if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
+                  setToast("Enter your email address first to reset your password.");
+                  return;
+                }
+                setIsSubmitting(true);
+                try {
+                  await requestPasswordReset(email.trim().toLowerCase());
+                  setToast("If an account exists for this email, a password reset link has been sent.");
+                } catch (resetError) {
+                  setToast(resetError instanceof Error ? resetError.message : "Unable to send a reset email.");
+                } finally {
+                  setIsSubmitting(false);
+                }
+              }}
+            >
+              <Text style={styles.linkText}>Forgot password?</Text>
+            </Pressable>
           </View>
 
           <Pressable
@@ -118,7 +139,7 @@ export default function LoginScreen() {
               }
               setIsSubmitting(true);
               try {
-                await authenticate("login", { email: email.trim().toLowerCase(), password });
+                await authenticate(email.trim().toLowerCase(), password);
                 router.replace("/dashboard" as never);
               } catch (submitError) {
                 setToast(submitError instanceof Error ? submitError.message : "Unable to log in.");

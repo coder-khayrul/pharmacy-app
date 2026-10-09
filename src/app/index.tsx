@@ -158,7 +158,7 @@ function FeatureArtwork({ kind, tone }: { kind: SlideKind; tone: string }) {
       <View style={styles.chartCard}>
         <View style={styles.chartCopy}>
           <Text style={styles.statLabel}>Weekly overview</Text>
-          <Text style={styles.chartValue}>$4,280</Text>
+          <Text style={styles.chartValue}>৳4,280</Text>
         </View>
         <View style={styles.chartBars}>
           {[34, 54, 42, 76, 60, 88, 68].map((height, index) => (

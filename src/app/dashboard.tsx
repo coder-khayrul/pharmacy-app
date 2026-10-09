@@ -10,6 +10,8 @@ import {
   View,
 } from "react-native";
 
+import { clearAuthToken } from "@/lib/auth";
+
 const palette = {
   background: "#f3fbf7",
   white: "#ffffff",
@@ -34,7 +36,7 @@ const stats = [
 ];
 
 const orders = [
-  { id: "#PC-1048", customer: "Amina Rahman", items: "3 items", amount: "$42.80", status: "Paid", tone: palette.mint },
+  { id: "#PC-1048", customer: "Amina Rahman", items: "3 items", amount: "৳42.80", status: "Paid", tone: palette.mint },
   { id: "#PC-1047", customer: "Daniel Smith", items: "5 items", amount: "$86.20", status: "Processing", tone: palette.blueSoft },
   { id: "#PC-1046", customer: "Nadia Khan", items: "2 items", amount: "$19.50", status: "Paid", tone: palette.mint },
   { id: "#PC-1045", customer: "James Wilson", items: "7 items", amount: "$124.90", status: "Pending", tone: palette.orangeSoft },
@@ -88,7 +90,13 @@ export default function DashboardScreen() {
               </Pressable>
               <View style={styles.avatar}><Text style={styles.avatarText}>AD</Text></View>
               {isWide ? <Text style={styles.userName}>Admin</Text> : null}
-              <Pressable onPress={() => router.replace("/login")} style={styles.logoutButton}>
+              <Pressable
+                onPress={async () => {
+                  await clearAuthToken();
+                  router.replace("/login");
+                }}
+                style={styles.logoutButton}
+              >
                 <Text style={styles.logoutText}>Log out</Text>
               </Pressable>
             </View>
@@ -134,7 +142,7 @@ export default function DashboardScreen() {
                   <View><Text style={styles.panelTitle}>Sales overview</Text><Text style={styles.panelHint}>Revenue performance this week</Text></View>
                   <Pressable style={styles.periodButton}><Text style={styles.periodText}>This week  v</Text></Pressable>
                 </View>
-                <View style={styles.chartSummary}><Text style={styles.chartTotal}>$4,280</Text><Text style={styles.chartChange}>+18.2% from last week</Text></View>
+                <View style={styles.chartSummary}><Text style={styles.chartTotal}>৳4,280</Text><Text style={styles.chartChange}>+18.2% from last week</Text></View>
                 <View style={styles.chart}>
                   {[42, 62, 50, 76, 58, 92, 70].map((height, index) => (
                     <View key={index} style={styles.chartColumn}>

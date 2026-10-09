@@ -14,7 +14,7 @@ import {
 } from "react-native";
 
   import { FormToast, PasswordField, PasswordRequirements } from "@/components/auth-ui";
-  import { requestSignupVerification, verifySignupCode } from "@/lib/auth";
+  import { completeSignup, requestSignupVerification, verifySignupCode } from "@/lib/auth";
 
 const palette = {
   emerald: "#10a06d",
@@ -79,8 +79,6 @@ export default function SignupScreen() {
       await requestSignupVerification({
         name: name.trim(),
         email: email.trim().toLowerCase(),
-        password,
-        acceptedPolicy: "true",
       });
       setStep("verification");
       showToast("A 6-digit verification code was sent to your email.", "success");
@@ -91,7 +89,7 @@ export default function SignupScreen() {
     }
   };
 
-  const completeSignup = async () => {
+  const handleCompleteSignup = async () => {
     if (!/^\d{6}$/.test(verificationCode)) {
       showToast("Enter the complete 6-digit code from your email.");
       return;
@@ -99,11 +97,10 @@ export default function SignupScreen() {
 
     setIsSubmitting(true);
     try {
-      await verifySignupCode(email.trim().toLowerCase(), verificationCode);
-      setToast({ message: "Email verified. Your account is ready; please log in.", kind: "success" });
-      setPassword("");
-      setConfirmPassword("");
-      setTimeout(() => router.replace("/login"), 1800);
+      const verificationToken = await verifySignupCode(email.trim().toLowerCase(), verificationCode);
+      await completeSignup(name.trim(), email.trim().toLowerCase(), password, verificationToken);
+      setToast({ message: "Your email is verified and your account is ready.", kind: "success" });
+      router.replace("/dashboard");
     } catch (submitError) {
       showToast(submitError instanceof Error ? submitError.message : "Unable to verify your email.");
     } finally {
@@ -200,7 +197,7 @@ export default function SignupScreen() {
                 />
               </Pressable>
               <Text style={styles.codeHelp}>Enter the code exactly as it appears in your inbox.</Text>
-              <Pressable style={[styles.primaryButton, isSubmitting && styles.disabledButton]} disabled={isSubmitting} onPress={completeSignup}>
+              <Pressable style={[styles.primaryButton, isSubmitting && styles.disabledButton]} disabled={isSubmitting} onPress={handleCompleteSignup}>
                 <Text style={styles.primaryButtonText}>{isSubmitting ? "Verifying..." : "Verify and create account"}</Text>
               </Pressable>
               <Pressable style={styles.backAction} onPress={() => setStep("details")}>
