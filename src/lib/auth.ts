@@ -13,11 +13,41 @@ export type AuthUser = {
   uid: string;
   name: string;
   email: string;
+  role: UserRole;
 };
+
+export type UserRole = "customer" | "staff" | "admin";
 
 type ApiMessage = {
   message?: string;
 };
+
+const isUserRole = (role: unknown): role is UserRole =>
+  role === "customer" || role === "staff" || role === "admin";
+
+const getRole = async (idToken: string): Promise<UserRole> => {
+  const url = `${getApiUrl()}/auth/me`;
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      headers: { Authorization: `Bearer ${idToken}` },
+    });
+  } catch (error) {
+    const detail = error instanceof Error ? ` ${error.message}` : "";
+    throw new Error(`Cannot reach the authentication server at ${url}.${detail} Check that the API is running and that your device is on the same network.`);
+  }
+
+  const data = (await response.json().catch(() => ({}))) as { role?: unknown; message?: string };
+  if (!response.ok) {
+    throw new Error(data.message || "Unable to verify your account role.");
+  }
+  if (!isUserRole(data.role)) {
+    throw new Error("The authentication server returned an invalid account role.");
+  }
+  return data.role;
+};
+
+export const getAuthenticatedRole = getRole;
 
 const postAuth = async <T,>(
   path: string,
@@ -55,10 +85,18 @@ export const authenticate = async (email: string, password: string): Promise<Aut
     throw new Error("Verify your email address before logging in.");
   }
 
+  let role: UserRole;
+  try {
+    role = await getRole(await credential.user.getIdToken(true));
+  } catch (error) {
+    await signOut(auth);
+    throw error;
+  }
   return {
     uid: credential.user.uid,
     name: credential.user.displayName || "",
     email: credential.user.email || email,
+    role,
   };
 };
 
@@ -93,16 +131,21 @@ export const completeSignup = async (
   try {
     await updateProfile(credential.user, { displayName: name });
     const idToken = await credential.user.getIdToken();
-    await postAuth<ApiMessage>(
+    const completion = await postAuth<ApiMessage & { role?: unknown }>(
       "signup/complete",
       { verificationToken },
       idToken,
     );
+    if (!isUserRole(completion.role)) {
+      throw new Error("The authentication server returned an invalid account role.");
+    }
+    await credential.user.getIdToken(true);
     await credential.user.reload();
     return {
       uid: credential.user.uid,
       name: credential.user.displayName || name,
       email: credential.user.email || email,
+      role: completion.role,
     };
   } catch (error) {
     await signOut(auth);

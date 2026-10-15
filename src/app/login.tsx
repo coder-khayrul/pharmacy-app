@@ -139,8 +139,8 @@ export default function LoginScreen() {
               }
               setIsSubmitting(true);
               try {
-                await authenticate(email.trim().toLowerCase(), password);
-                router.replace("/dashboard" as never);
+                const user = await authenticate(email.trim().toLowerCase(), password);
+                router.replace((user.role === "customer" ? "/customer-dashboard" : "/dashboard") as never);
               } catch (submitError) {
                 setToast(submitError instanceof Error ? submitError.message : "Unable to log in.");
               } finally {

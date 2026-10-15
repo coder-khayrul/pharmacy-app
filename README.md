@@ -26,6 +26,12 @@ If signup reports that the Firebase ID token has the wrong `aud` claim, the runn
 
 Never commit either `.env` file or the Firebase service-account JSON. Firebase password reset emails are sent directly by Firebase Authentication.
 
+### Account roles and admin test registration
+
+Public signup always creates a **customer** account. Pharmacy staff and admin access is assigned only by the API from the server-side `STAFF_EMAILS` and `ADMIN_EMAILS` comma-separated allowlists; the app never accepts a role from the signup form. Add the exact email address to the desired allowlist in `server/pharmacy-app-server/.env` **before** registering, restart the API, then use the normal verified signup flow. For example, put a dedicated test address in `ADMIN_EMAILS`, register it through the app, and log in to open the admin dashboard. Keep these allowlists server-only; after restarting the API, removing an address revokes its elevated API access.
+
+Admin and staff roles are stored as Firebase custom claims and checked against the current server allowlists. The frontend checks the role before showing the matching dashboard, and the API checks it independently before serving staff/admin inventory data. Accounts without a recognized role are treated as customers.
+
 2. Start the app
 
    ```bash

@@ -98,9 +98,9 @@ export default function SignupScreen() {
     setIsSubmitting(true);
     try {
       const verificationToken = await verifySignupCode(email.trim().toLowerCase(), verificationCode);
-      await completeSignup(name.trim(), email.trim().toLowerCase(), password, verificationToken);
+      const user = await completeSignup(name.trim(), email.trim().toLowerCase(), password, verificationToken);
       setToast({ message: "Your email is verified and your account is ready.", kind: "success" });
-      router.replace("/dashboard");
+      router.replace((user.role === "customer" ? "/customer-dashboard" : "/dashboard") as never);
     } catch (submitError) {
       showToast(submitError instanceof Error ? submitError.message : "Unable to verify your email.");
     } finally {

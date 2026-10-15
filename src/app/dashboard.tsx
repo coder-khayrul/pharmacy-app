@@ -11,8 +11,10 @@ import {
 } from "react-native";
 
 import { clearAuthToken } from "@/lib/auth";
+import type { UserRole } from "@/lib/auth";
 import { getMedicines, type MedicineInventoryItem } from "@/lib/api";
 import { auth } from "@/Firebase/firebase.init";
+import { RoleGuard } from "@/components/role-guard";
 
 const palette = {
   background: "#f3fbf7",
@@ -50,6 +52,8 @@ const footerItems = [
   { label: "Customers", icon: "○", tab: "Customers" },
 ];
 
+const staffRoles: UserRole[] = ["admin", "staff"];
+
 function BrandMark() {
   return (
     <View style={styles.logoBadge}>
@@ -61,7 +65,7 @@ function BrandMark() {
   );
 }
 
-export default function DashboardScreen() {
+function DashboardContent({ role }: { role: UserRole }) {
   const { width } = useWindowDimensions();
   const [activeTab, setActiveTab] = useState("Overview");
   const [medicines, setMedicines] = useState<MedicineInventoryItem[]>([]);
@@ -124,8 +128,8 @@ export default function DashboardScreen() {
                 <Text style={styles.iconText}>!</Text>
                 <View style={styles.notificationDot} />
               </Pressable>
-              <View style={styles.avatar}><Text style={styles.avatarText}>AD</Text></View>
-              {isWide ? <Text style={styles.userName}>Admin</Text> : null}
+              <View style={styles.avatar}><Text style={styles.avatarText}>{role === "admin" ? "AD" : "ST"}</Text></View>
+              {isWide ? <Text style={styles.userName}>{role === "admin" ? "Admin" : "Staff"}</Text> : null}
               <Pressable
                 onPress={async () => {
                   await clearAuthToken();
@@ -149,7 +153,7 @@ export default function DashboardScreen() {
           <View style={styles.greetingRow}>
             <View>
               <Text style={styles.eyebrow}>MONDAY, 06 SEPTEMBER 2026</Text>
-              <Text style={styles.title}>Good morning, Admin</Text>
+              <Text style={styles.title}>Good morning, {role === "admin" ? "Admin" : "Staff"}</Text>
               <Text style={styles.subtitle}>Here&apos;s what&apos;s happening at your pharmacy today.</Text>
             </View>
             <Pressable style={styles.primaryButton}>
@@ -353,3 +357,12 @@ const styles = StyleSheet.create({
   footerLabel: { color: palette.muted, fontSize: 10, fontWeight: "700" },
   footerLabelActive: { color: palette.emeraldDark },
 });
+
+export default function DashboardScreen() {
+  return (
+    <RoleGuard
+      allowedRoles={staffRoles}
+      render={(role) => <DashboardContent role={role} />}
+    />
+  );
+}
