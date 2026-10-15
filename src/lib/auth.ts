@@ -6,23 +6,8 @@ import {
   updateProfile,
   type UserCredential,
 } from "firebase/auth";
-import Constants from "expo-constants";
-import { Platform } from "react-native";
-
 import { auth } from "@/Firebase/firebase.init";
-
-const getApiUrl = () => {
-  const configuredUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
-  if (configuredUrl) return configuredUrl.replace(/\/$/, "");
-
-  if (Platform.OS === "web") {
-    const host = typeof window !== "undefined" ? window.location.hostname : "localhost";
-    return `http://${host}:4000/api`;
-  }
-
-  const expoHost = Constants.expoConfig?.hostUri?.split(":")[0];
-  return `http://${expoHost || "localhost"}:4000/api`;
-};
+import { getApiUrl } from "@/lib/api";
 
 export type AuthUser = {
   uid: string;

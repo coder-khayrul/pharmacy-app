@@ -124,7 +124,7 @@ function FeatureArtwork({ kind, tone }: { kind: SlideKind; tone: string }) {
         </View>
         <View style={styles.totalRow}>
           <Text style={styles.totalLabel}>Total amount</Text>
-          <Text style={styles.totalValue}>$18.45</Text>
+          <Text style={styles.totalValue}>৳18.45</Text>
         </View>
         <View style={styles.invoiceLine} />
         <View style={styles.invoiceLineShort} />
@@ -146,7 +146,7 @@ function FeatureArtwork({ kind, tone }: { kind: SlideKind; tone: string }) {
       <View style={styles.statRow}>
         <View style={styles.statCard}>
           <Text style={styles.statLabel}>Total sales</Text>
-          <Text style={styles.statValue}>$18,450</Text>
+          <Text style={styles.statValue}>৳18,450</Text>
           <View style={[styles.statBar, { backgroundColor: tone, width: "72%" }]} />
         </View>
         <View style={styles.statCard}>

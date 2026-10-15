@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Pressable,
   SafeAreaView,
@@ -11,6 +11,8 @@ import {
 } from "react-native";
 
 import { clearAuthToken } from "@/lib/auth";
+import { getMedicines, type MedicineInventoryItem } from "@/lib/api";
+import { auth } from "@/Firebase/firebase.init";
 
 const palette = {
   background: "#f3fbf7",
@@ -29,23 +31,16 @@ const palette = {
 };
 
 const stats = [
-  { label: "Total sales", value: "$18,450", change: "+12.8%", tone: palette.emerald, icon: "$" },
+  { label: "Total sales", value: "৳18,450", change: "+12.8%", tone: palette.emerald, icon: "৳" },
   { label: "Orders today", value: "128", change: "+8.4%", tone: palette.blue, icon: "#" },
-  { label: "Low stock items", value: "16", change: "Needs attention", tone: palette.orange, icon: "!" },
   { label: "Customers", value: "2,840", change: "+4.6%", tone: palette.red, icon: "o" },
 ];
 
 const orders = [
   { id: "#PC-1048", customer: "Amina Rahman", items: "3 items", amount: "৳42.80", status: "Paid", tone: palette.mint },
-  { id: "#PC-1047", customer: "Daniel Smith", items: "5 items", amount: "$86.20", status: "Processing", tone: palette.blueSoft },
-  { id: "#PC-1046", customer: "Nadia Khan", items: "2 items", amount: "$19.50", status: "Paid", tone: palette.mint },
-  { id: "#PC-1045", customer: "James Wilson", items: "7 items", amount: "$124.90", status: "Pending", tone: palette.orangeSoft },
-];
-
-const inventory = [
-  { name: "Paracetamol 500mg", detail: "Only 8 units left", level: 8, tone: palette.red },
-  { name: "Amoxicillin 250mg", detail: "Only 14 units left", level: 18, tone: palette.orange },
-  { name: "Omeprazole 20mg", detail: "Only 22 units left", level: 28, tone: palette.orange },
+  { id: "#PC-1047", customer: "Daniel Smith", items: "5 items", amount: "৳86.20", status: "Processing", tone: palette.blueSoft },
+  { id: "#PC-1046", customer: "Nadia Khan", items: "2 items", amount: "৳19.50", status: "Paid", tone: palette.mint },
+  { id: "#PC-1045", customer: "James Wilson", items: "7 items", amount: "৳124.90", status: "Pending", tone: palette.orangeSoft },
 ];
 
 const footerItems = [
@@ -69,7 +64,48 @@ function BrandMark() {
 export default function DashboardScreen() {
   const { width } = useWindowDimensions();
   const [activeTab, setActiveTab] = useState("Overview");
+  const [medicines, setMedicines] = useState<MedicineInventoryItem[]>([]);
+  const [medicinesLoading, setMedicinesLoading] = useState(true);
+  const [medicineError, setMedicineError] = useState<string | null>(null);
   const isWide = width >= 800;
+  const lowStockMedicines = medicines.filter((medicine) => medicine.currentStock <= medicine.reorderLevel);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadMedicines = async () => {
+      try {
+        const user = auth.currentUser;
+        if (!user) throw new Error("Please log in to view medicine inventory.");
+        const inventory = await getMedicines(await user.getIdToken());
+        if (isMounted) setMedicines(inventory);
+      } catch (error) {
+        if (isMounted) {
+          setMedicineError(error instanceof Error ? error.message : "Unable to load medicine inventory.");
+        }
+      } finally {
+        if (isMounted) setMedicinesLoading(false);
+      }
+    };
+
+    void loadMedicines();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const dashboardStats = [
+    stats[0],
+    stats[1],
+    {
+      label: "Low stock items",
+      value: String(lowStockMedicines.length),
+      change: "Needs attention",
+      tone: palette.orange,
+      icon: "!",
+    },
+    stats[2],
+  ];
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -123,7 +159,7 @@ export default function DashboardScreen() {
           </View>
 
           <View style={styles.statsGrid}>
-            {stats.map((stat) => (
+            {dashboardStats.map((stat) => (
               <View key={stat.label} style={styles.statCard}>
                 <View style={[styles.statIcon, { backgroundColor: stat.tone + "18" }]}>
                   <Text style={[styles.statIconText, { color: stat.tone }]}>{stat.icon}</Text>
@@ -168,10 +204,32 @@ export default function DashboardScreen() {
 
             <View style={styles.sideColumn}>
               <View style={styles.panel}>
-                <View style={styles.panelHeader}><View><Text style={styles.panelTitle}>Low stock alert</Text><Text style={styles.panelHint}>Items that need replenishing</Text></View><Text style={styles.alertCount}>16</Text></View>
-                {inventory.map((item) => (
-                  <View key={item.name} style={styles.inventoryRow}><View style={styles.inventoryCopy}><Text style={styles.inventoryName}>{item.name}</Text><Text style={styles.inventoryDetail}>{item.detail}</Text><View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${item.level}%`, backgroundColor: item.tone }]} /></View></View><Text style={[styles.inventoryChevron, { color: item.tone }]}>›</Text></View>
-                ))}
+                <View style={styles.panelHeader}><View><Text style={styles.panelTitle}>Low stock alert</Text><Text style={styles.panelHint}>Items that need replenishing</Text></View><Text style={styles.alertCount}>{lowStockMedicines.length}</Text></View>
+                {medicinesLoading ? (
+                  <Text style={styles.inventoryMessage}>Loading medicine inventory...</Text>
+                ) : medicineError ? (
+                  <Text style={styles.inventoryError}>{medicineError}</Text>
+                ) : lowStockMedicines.length === 0 ? (
+                  <Text style={styles.inventoryMessage}>
+                    {medicines.length === 0 ? "No medicines found in the database." : "No medicines are currently low on stock."}
+                  </Text>
+                ) : lowStockMedicines.slice(0, 5).map((item) => {
+                  const stockRatio = item.reorderLevel > 0 ? item.currentStock / item.reorderLevel : 0;
+                  const tone = stockRatio <= 0.5 ? palette.red : palette.orange;
+                  const level = Math.max(0, Math.min(100, stockRatio * 100));
+                  return (
+                    <View key={item.id} style={styles.inventoryRow}>
+                      <View style={styles.inventoryCopy}>
+                        <Text style={styles.inventoryName}>{item.name}</Text>
+                        <Text style={styles.inventoryDetail}>{item.currentStock} units left · reorder at {item.reorderLevel}</Text>
+                        <View style={styles.progressTrack}>
+                          <View style={[styles.progressFill, { width: `${level}%`, backgroundColor: tone }]} />
+                        </View>
+                      </View>
+                      <Text style={[styles.inventoryChevron, { color: tone }]}>›</Text>
+                    </View>
+                  );
+                })}
                 <Pressable style={styles.outlineButton}><Text style={styles.outlineButtonText}>Review inventory</Text></Pressable>
               </View>
               <View style={styles.tipPanel}><Text style={styles.tipLabel}>QUICK TIP</Text><Text style={styles.tipTitle}>Keep your shelves ready.</Text><Text style={styles.tipCopy}>Review low stock items before the afternoon rush to avoid missed sales.</Text><Pressable><Text style={styles.tipLink}>Open inventory  →</Text></Pressable></View>
@@ -273,6 +331,8 @@ const styles = StyleSheet.create({
   inventoryCopy: { flex: 1 },
   inventoryName: { color: palette.text, fontSize: 12, fontWeight: "800" },
   inventoryDetail: { color: palette.muted, fontSize: 11, marginTop: 4 },
+  inventoryMessage: { color: palette.muted, fontSize: 12, lineHeight: 18, marginTop: 16 },
+  inventoryError: { color: palette.red, fontSize: 12, lineHeight: 18, marginTop: 16 },
   progressTrack: { height: 5, backgroundColor: palette.background, borderRadius: 3, marginTop: 9, overflow: "hidden" },
   progressFill: { height: "100%", borderRadius: 3 },
   inventoryChevron: { fontSize: 24, fontWeight: "400" },
