@@ -4,6 +4,8 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
 
 ## Get started
 
+Use Node.js 20.19.4 or newer (Node.js 22.13 or newer in the 22.x line) for the React Native version used by this app.
+
 1. Install dependencies
 
    ```bash
@@ -17,10 +19,10 @@ Email/password login and password resets use Firebase Authentication. Signup req
 1. In Firebase Console, enable **Authentication → Sign-in method → Email/Password**.
 2. Create a Firebase service account in **Project settings → Service accounts** and generate a private key. In Google Cloud Console → **IAM**, grant that service account the **Firebase Authentication Admin** role (`roles/firebaseauth.admin`) on this same project. Keep the downloaded key secret; never paste it into chat or commit it.
 3. Create/configure SMTP credentials for sending signup codes.
-4. Copy `server/pharmacy-app-server/.env.example` to `server/pharmacy-app-server/.env`. Set `MONGODB_URI`, a long random `JWT_SECRET`, `FIREBASE_PROJECT_ID`, `FIREBASE_SERVICE_ACCOUNT_JSON` (the full service-account JSON on one line, with private-key newlines represented as `\n`), and all `SMTP_*` values. `FIREBASE_PROJECT_ID`, the service account's `project_id`, and `projectId` in `pharmacy-app/src/Firebase/firebase.init.ts` must all name the same Firebase project. MongoDB stores short-lived, hashed OTP challenges; codes expire after 10 minutes and allow at most five attempts. If `FIREBASE_SERVICE_ACCOUNT_JSON` is missing, the API falls back to Google Application Default Credentials; on a local machine, configure those credentials or provide the service-account JSON, otherwise signup code requests cannot check Firebase users.
-5. Start the API from `server/pharmacy-app-server` with `npm install` and `npm run dev`.
-6. Leave `EXPO_PUBLIC_API_URL` unset during development: the app derives the API host from Expo's dev server for phone testing and uses the current web host for web. If you need an override, set `http://<your-computer-lan-ip>:4000/api` on a physical phone, `http://localhost:4000/api` for web/iOS simulator, or `http://10.0.2.2:4000/api` for an Android emulator.
-7. Start Expo from `pharmacy-app` with `npm start`.
+4. From the workspace root, copy `server/.env.example` to `server/.env`. Set `MONGODB_URI`, a long random `JWT_SECRET`, `FIREBASE_PROJECT_ID`, `FIREBASE_SERVICE_ACCOUNT_JSON` (the full service-account JSON on one line, with private-key newlines represented as `\n`), and all `SMTP_*` values. Signup requires both Firebase Admin credentials and working SMTP credentials to send verification codes. `FIREBASE_PROJECT_ID`, the service account's `project_id`, and `projectId` in `src/Firebase/firebase.init.ts` must all name the same Firebase project. MongoDB stores short-lived, hashed OTP challenges; codes expire after 10 minutes and allow at most five attempts. If `FIREBASE_SERVICE_ACCOUNT_JSON` is missing, the API falls back to Google Application Default Credentials; on a local machine, configure those credentials or provide the service-account JSON, otherwise signup code requests cannot check Firebase users.
+5. In a terminal at the workspace root, start the API with `cd server`, `npm install`, and `npm run dev`. Keep this terminal running.
+6. In a second terminal at the workspace root, start Expo with `cd pharmacy-app`, `npm install`, and `npm start`.
+7. Leave `EXPO_PUBLIC_API_URL` unset during development: the app derives the API host from Expo's dev server for phone testing and uses the current web host for web. If you need an override, set `http://<your-computer-lan-ip>:4000/api` on a physical phone, `http://localhost:4000/api` for web/iOS simulator, or `http://10.0.2.2:4000/api` for an Android emulator.
 
 If signup reports that the Firebase ID token has the wrong `aud` claim, the running app is using a different Firebase project than the API. Align the three project IDs above, stop the current Expo app/server, restart Expo with a cleared bundle cache (`npx expo start --clear`), and restart/reinstall the app so it issues a fresh token. Do not change only the server project ID to match the error token; the Admin service account must belong to that same project too.
 
@@ -28,7 +30,7 @@ Never commit either `.env` file or the Firebase service-account JSON. Firebase p
 
 ### Account roles and admin test registration
 
-Public signup always creates a **customer** account. Pharmacy staff and admin access is assigned only by the API from the server-side `STAFF_EMAILS` and `ADMIN_EMAILS` comma-separated allowlists; the app never accepts a role from the signup form. Add the exact email address to the desired allowlist in `server/pharmacy-app-server/.env` **before** registering, restart the API, then use the normal verified signup flow. For example, put a dedicated test address in `ADMIN_EMAILS`, register it through the app, and log in to open the admin dashboard. Keep these allowlists server-only; after restarting the API, removing an address revokes its elevated API access.
+Public signup always creates a **customer** account. Pharmacy staff and admin access is assigned only by the API from the server-side `STAFF_EMAILS` and `ADMIN_EMAILS` comma-separated allowlists; the app never accepts a role from the signup form. Add the exact email address to the desired allowlist in `server/.env` **before** registering, restart the API, then use the normal verified signup flow. For example, put a dedicated test address in `ADMIN_EMAILS`, register it through the app, and log in to open the admin dashboard. Keep these allowlists server-only; after restarting the API, removing an address revokes its elevated API access.
 
 Admin and staff roles are stored as Firebase custom claims and checked against the current server allowlists. The frontend checks the role before showing the matching dashboard, and the API checks it independently before serving staff/admin inventory data. Accounts without a recognized role are treated as customers.
 
